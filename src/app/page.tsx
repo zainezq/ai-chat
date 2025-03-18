@@ -2,27 +2,39 @@
 
 import { useState, useEffect } from "react";
 import axios from "axios";
+import Auth from "./auth"; 
 
 export default function Home() {
+  const [user, setUser] = useState<any>(null);
   const [chats, setChats] = useState<{ id: number; title: string }[]>([]);
   const [messages, setMessages] = useState<{ role: string; text: string }[]>([]);
   const [preferences, setPreferences] = useState<{ [key: string]: string }>({});
   const [input, setInput] = useState("");
-  const [userId, setUserId] = useState("1"); // Replace with actual logged-in user ID
   const [chatId, setChatId] = useState<number | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [renameId, setRenameId] = useState<number | null>(null);
+  const [newTitle, setNewTitle] = useState("");
 
   useEffect(() => {
-    fetchChats();
-    if (chatId) {
-      fetchMessages(chatId);
+    const storedUser = localStorage.getItem("user");
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
     }
-  }, [chatId]);
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchChats();
+      if (chatId) {
+        fetchMessages(chatId);
+      }
+    }
+  }, [user, chatId]);
 
   // Fetch all chats for the user
   const fetchChats = async () => {
     try {
-      const response = await axios.get(`http://localhost:5000/api/chats/${userId}`);
+      const response = await axios.get(`http://localhost:5000/api/chats/${user.id}`);
       setChats(response.data);
     } catch (error) {
       console.error("Error fetching chats:", error);
@@ -33,7 +45,7 @@ export default function Home() {
   const createNewChat = async () => {
     try {
       const response = await axios.post("http://localhost:5000/api/new-chat", {
-        userId,
+        userId: user.id,
         title: "New Chat",
       });
 
@@ -75,12 +87,48 @@ export default function Home() {
       });
 
       setMessages([...newMessages, { role: "bot", text: response.data.reply }]);
-      setPreferences(response.data.updatedPreferences); // Update preferences dynamically
+      setPreferences(response.data.updatedPreferences);
     } catch (error) {
       console.error("Error sending message:", error);
     }
   };
 
+  const renameChat = async (chatId: number) => {
+    if (!newTitle.trim()) return;
+  
+    try {
+      const response = await axios.put(`http://localhost:5000/api/chats/${chatId}`, {
+        title: newTitle,
+      });
+  
+      setChats(chats.map(chat => (chat.id === chatId ? response.data : chat)));
+      setRenameId(null); // Hide rename input
+      setNewTitle(""); // Reset input
+    } catch (error) {
+      console.error("Error renaming chat:", error);
+    }
+  };
+  
+  const deleteChat = async (chatId: number) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/chats/${chatId}`);
+      setChats(chats.filter(chat => chat.id !== chatId));
+  
+      if (chatId === chatId) {
+        setChatId(null); // Clear chat if the active one is deleted
+        setMessages([]);
+      }
+    } catch (error) {
+      console.error("Error deleting chat:", error);
+    }
+  };
+  
+  
+
+  // If the user is not authenticated, show the Auth page
+  if (!user) {
+    return <Auth onAuth={setUser} />;
+  }
   return (
     <div className="flex h-screen">
       {/* Sidebar for chat history */}
@@ -91,21 +139,38 @@ export default function Home() {
 
         {isSidebarOpen && (
           <div>
-            <button onClick={createNewChat} className="bg-blue-600 text-white p-2 w-full rounded-md mb-4">
-              ➕ New Chat
-            </button>
+  <button onClick={createNewChat} className="bg-blue-600 text-white p-2 w-full rounded-md mb-4">
+    ➕ New Chat
+  </button>
 
-            <h2 className="text-lg font-bold mb-4">Chats</h2>
-            {chats.map((chat) => (
-              <p
-                key={chat.id}
-                onClick={() => setChatId(chat.id)}
-                className={`p-2 cursor-pointer ${chatId === chat.id ? "bg-blue-400" : "hover:bg-gray-600"} rounded-md`}
-              >
-                {chat.title}
-              </p>
-            ))}
-          </div>
+  <h2 className="text-lg font-bold mb-4">Chats</h2>
+
+  {chats.map((chat) => (
+    <div key={chat.id} className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-600 rounded-md">
+      {renameId === chat.id ? (
+        <>
+          <input
+            type="text"
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            className="border p-1 rounded w-full"
+          />
+          <button onClick={() => renameChat(chat.id)} className="ml-2 text-green-500">✅</button>
+          <button onClick={() => setRenameId(null)} className="ml-2 text-red-500">❌</button>
+        </>
+      ) : (
+        <>
+          <p onClick={() => setChatId(chat.id)} className={`${chatId === chat.id ? "bg-blue-400" : ""} p-2 flex-1`}>
+            {chat.title}
+          </p>
+          <button onClick={() => setRenameId(chat.id)} className="text-yellow-500 ml-2">✏️</button>
+          <button onClick={() => deleteChat(chat.id)} className="text-red-500 ml-2">🗑️</button>
+        </>
+      )}
+    </div>
+  ))}
+</div>
+
         )}
       </div>
 

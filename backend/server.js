@@ -34,6 +34,23 @@ app.post("/api/register", async (req, res) => {
     }
 });
 
+app.post("/api/login", async (req, res) => {
+    const { name } = req.body;
+
+    try {
+        const user = await pool.query("SELECT * FROM users WHERE name = $1", [name]);
+
+        if (user.rows.length === 0) {
+            res.status(401).json({ error: "User not found" });
+        } else {
+            res.json(user.rows[0]);
+        }
+    } catch (error) {
+        console.error("Error logging in:", error);
+        res.status(500).json({ error: "Could not log in" });    
+    }
+});
+
 app.post("/api/new-chat", async (req, res) => {
     const { userId, title } = req.body;
 
@@ -48,6 +65,36 @@ app.post("/api/new-chat", async (req, res) => {
         res.status(500).json({ error: "Could not create chat" });
     }
 });
+
+app.put("/api/chats/:chatId", async (req, res) => {
+    const { chatId } = req.params;
+    const { title } = req.body;
+
+    try {
+        const updatedChat = await pool.query(
+            "UPDATE chats SET title = $1 WHERE id = $2 RETURNING *",
+            [title, chatId]
+        );
+
+        res.json(updatedChat.rows[0]);
+    } catch (error) {
+        console.error("Error renaming chat:", error);
+        res.status(500).json({ error: "Could not rename chat" });
+    }
+});
+
+app.delete("/api/chats/:chatId", async (req, res) => {
+    const { chatId } = req.params;
+
+    try {
+        await pool.query("DELETE FROM chats WHERE id = $1", [chatId]);
+        res.json({ success: true });
+    } catch (error) {
+        console.error("Error deleting chat:", error);
+        res.status(500).json({ error: "Could not delete chat" });
+    }
+});
+
 
 app.get("/api/messages/:chatId", async (req, res) => {
     const { chatId } = req.params;
