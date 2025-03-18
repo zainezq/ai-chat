@@ -1,0 +1,36 @@
+* to reset the preferences:
+
+UPDATE users
+SET preferences = '{}'::jsonb;
+
+* create all the tables:
+
+-- Drop tables if they exist to avoid conflicts
+drop table if exists messages cascade;
+drop table if exists chats cascade;
+drop table if exists users cascade;
+
+-- Create users table
+create table users (
+    id serial primary key,
+    name text not null,
+    personality text default 'neutral',
+    preferences jsonb default '{}'::jsonb
+);
+
+-- Create chats table
+create table chats (
+    id serial primary key,
+    user_id integer references users(id) on delete set null,
+    title text default 'New Chat',
+    created_at timestamp without time zone default now()
+);
+
+-- Create messages table
+create table messages (
+    id serial primary key,
+    chat_id integer references chats(id) on delete cascade,
+    sender text,
+    content text,
+    timestamp timestamp without time zone default now()
+);
