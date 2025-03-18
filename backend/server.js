@@ -185,12 +185,32 @@ app.post("/api/chat", async (req, res) => {
 
         const aiReply = response.choices[0].message.content;
 
-        // Update preferences dynamically
-        if (message.toLowerCase().includes("i like") || message.toLowerCase().includes("my preference is")) {
-            const extractedPreference = message.replace(/(i like|my preference is)/gi, "").trim();
-            preferences.updated = extractedPreference;
+        // Smart preference extraction
+        const preferencePatterns = [
+            { regex: /i like (.+)/i, category: "likes" },
+            { regex: /my favorite (food|music|movie|book) is (.+)/i, category: "favorites" },
+            { regex: /i prefer (.+)/i, category: "preferences" },
+            { regex: /i usually (eat|listen to|watch) (.+)/i, category: "habits" },
+        ];
 
-            // Save updated preferences to the database
+        let updated = false;
+
+        preferencePatterns.forEach(({ regex, category }) => {
+            const match = message.match(regex);
+            if (match) {
+                const preferenceValue = match[match.length - 1].trim(); // Extracted value
+                if (!preferences[category]) {
+                    preferences[category] = [];
+                }
+                if (!preferences[category].includes(preferenceValue)) {
+                    preferences[category].push(preferenceValue);
+                    updated = true;
+                }
+            }
+        });
+
+        // Save updated preferences to the database
+        if (updated) {
             await pool.query("UPDATE users SET preferences = $1 WHERE name = $2", [preferences, user.name]);
         }
 
@@ -204,6 +224,7 @@ app.post("/api/chat", async (req, res) => {
         res.status(500).json({ error: "Error processing AI response" });
     }
 });
+
 
 
 

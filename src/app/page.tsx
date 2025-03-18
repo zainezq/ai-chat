@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import axios from "axios";
 import Auth from "./auth"; 
+import ReactMarkdown from "react-markdown";
 
 export default function Home() {
   const [user, setUser] = useState<any>(null);
@@ -14,6 +15,7 @@ export default function Home() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [renameId, setRenameId] = useState<number | null>(null);
   const [newTitle, setNewTitle] = useState("");
+  const [isTyping, setIsTyping] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -79,6 +81,7 @@ export default function Home() {
     const newMessages = [...messages, { role: "user", text: input }];
     setMessages(newMessages);
     setInput("");
+    setIsTyping(true);
 
     try {
       const response = await axios.post("http://localhost:5000/api/chat", {
@@ -90,6 +93,9 @@ export default function Home() {
       setPreferences(response.data.updatedPreferences);
     } catch (error) {
       console.error("Error sending message:", error);
+    }
+    finally {
+      setIsTyping(false);
     }
   };
 
@@ -177,21 +183,33 @@ export default function Home() {
       {/* Main Chat UI */}
       <div className="flex flex-col flex-1 justify-between p-4 bg-gray-100">
         <div className="overflow-auto flex-1 border p-4 bg-white rounded-lg shadow-md">
-          {messages.map((msg, index) => (
-            <p
-              key={index}
-              className={`p-2 ${msg.role === "user" ? "bg-blue-500 text-white text-right" : "bg-green-500 text-white text-left"} rounded-lg my-1 max-w-[60%] ${msg.role === "user" ? "ml-auto" : ""}`}
-            >
-              {msg.text}
-            </p>
+        {messages.map((msg, index) => (
+            <div key={index} className={`p-2 rounded-lg my-1 max-w-[60%] ${msg.role === "user" ? "bg-blue-500 text-white ml-auto" : "bg-green-500 text-white"}`}>
+              <ReactMarkdown>{msg.text}</ReactMarkdown>
+            </div>
           ))}
+          {isTyping && <p className="text-gray-500 italic">AI is typing...</p>}
+        
         </div>
 
         {/* Display user preferences */}
         <div className="p-2 bg-gray-200 rounded-lg mt-2">
-          <h3 className="text-md font-bold">User Preferences</h3>
-          <p className="text-sm text-gray-700">{Object.keys(preferences).length ? JSON.stringify(preferences) : "No preferences set yet."}</p>
-        </div>
+        <h3 className="text-md font-bold">User Preferences</h3>
+        {Object.keys(preferences).length > 0 ? (
+          <ul className="text-sm text-gray-700">
+            {Object.entries(preferences).map(([key, value]) => (
+              <li key={key} className="mt-1">
+                <span className="font-semibold">{key}:</span> 
+                {Array.isArray(value) ? value.map(v => v.trim()).join(", ") : value.trim()}
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="text-sm text-gray-700">No preferences set yet.</p>
+        )}
+      </div>
+
+
 
         <div className="flex items-center mt-4">
           <input
