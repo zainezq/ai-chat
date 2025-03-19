@@ -16,6 +16,7 @@ export default function Home() {
   const [renameId, setRenameId] = useState<number | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [logout, setLogout] = useState(false);
 
   useEffect(() => {
     const storedUser = localStorage.getItem("user");
@@ -51,10 +52,10 @@ export default function Home() {
         title: "New Chat",
       });
 
-      setChats([response.data, ...chats]); // Add new chat to the list
-      setChatId(response.data.id); // Set the current chat
-      setMessages([]); // Clear messages for a fresh start
-      setPreferences({}); // Reset preferences for the new chat
+      setChats([response.data, ...chats]); 
+      setChatId(response.data.id); 
+      setMessages([]); 
+      setPreferences({}); 
     } catch (error) {
       console.error("Error creating chat:", error);
     }
@@ -128,6 +129,12 @@ export default function Home() {
       console.error("Error deleting chat:", error);
     }
   };
+
+  const logoutUser = () => {
+    localStorage.removeItem("user");
+    setUser(null);
+    setLogout(true);
+  };
   
   
 
@@ -138,47 +145,56 @@ export default function Home() {
   return (
     <div className="flex h-screen">
       {/* Sidebar for chat history */}
-      <div className={`bg-gray-800 text-white p-4 transition-all duration-300 ${isSidebarOpen ? "w-64" : "w-16"}`}>
-        <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="mb-4 focus:outline-none">
-          {isSidebarOpen ? "⬅️" : "➡️"}
-        </button>
-
-        {isSidebarOpen && (
-          <div>
-  <button onClick={createNewChat} className="bg-blue-600 text-white p-2 w-full rounded-md mb-4">
-    ➕ New Chat
+<div className={`bg-gray-800 text-white p-4 transition-all duration-300 ${isSidebarOpen ? "w-64" : "w-16"} flex flex-col h-screen`}>
+  <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="mb-4 focus:outline-none">
+    {isSidebarOpen ? "" : ""}
   </button>
 
-  <h2 className="text-lg font-bold mb-4">Chats</h2>
+  {isSidebarOpen && (
+    <div className="flex flex-col h-full">
+      <p className="text-lg font-bold mb-4">Welcome: {user.name}</p>
+      <button onClick={createNewChat} className="bg-blue-600 text-white p-2 w-full rounded-md mb-4 hover:bg-blue-700 cursor-pointer">
+        New Chat
+      </button>
 
-  {chats.map((chat) => (
-    <div key={chat.id} className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-600 rounded-md">
-      {renameId === chat.id ? (
-        <>
-          <input
-            type="text"
-            value={newTitle}
-            onChange={(e) => setNewTitle(e.target.value)}
-            className="border p-1 rounded w-full"
-          />
-          <button onClick={() => renameChat(chat.id)} className="ml-2 text-green-500">✅</button>
-          <button onClick={() => setRenameId(null)} className="ml-2 text-red-500">❌</button>
-        </>
-      ) : (
-        <>
-          <p onClick={() => setChatId(chat.id)} className={`${chatId === chat.id ? "bg-blue-400" : ""} p-2 flex-1`}>
-            {chat.title}
-          </p>
-          <button onClick={() => setRenameId(chat.id)} className="text-yellow-500 ml-2">✏️</button>
-          <button onClick={() => deleteChat(chat.id)} className="text-red-500 ml-2">🗑️</button>
-        </>
-      )}
+      <h2 className="text-lg font-bold mb-4">Chats</h2>
+
+      {/* Chat list with flex-grow to push logout button down */}
+      <div className="flex-1 overflow-y-auto">
+        {chats.map((chat) => (
+          <div key={chat.id} className="flex items-center justify-between p-2 cursor-pointer hover:bg-gray-600 rounded-md">
+            {renameId === chat.id ? (
+              <>
+                <input
+                  type="text"
+                  value={newTitle}
+                  onChange={(e) => setNewTitle(e.target.value)}
+                  className="border p-1 rounded w-full"
+                />
+                <button onClick={() => renameChat(chat.id)} className="ml-2 text-green-500">✅</button>
+                <button onClick={() => setRenameId(null)} className="ml-2 text-red-500">❌</button>
+              </>
+            ) : (
+              <>
+                <p onClick={() => setChatId(chat.id)} className={`${chatId === chat.id ? "bg-blue-400" : ""} p-2 flex-1`}>
+                  {chat.title}
+                </p>
+                <button onClick={() => setRenameId(chat.id)} className="text-yellow-500 ml-2">✏️</button>
+                <button onClick={() => deleteChat(chat.id)} className="text-red-500 ml-2">🗑️</button>
+              </>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Logout button at the bottom */}
+      <button onClick={logoutUser} className="bg-red-600 text-white p-2 w-full rounded-md cursor-pointer mt-4">
+        Logout
+      </button>
     </div>
-  ))}
+  )}
 </div>
 
-        )}
-      </div>
 
       {/* Main Chat UI */}
       <div className="flex flex-col flex-1 justify-between p-4 bg-gray-100">
